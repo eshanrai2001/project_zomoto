@@ -52,3 +52,9 @@ select * from users;
 
 /*what is the total amount each cx spent on zomoto*/
 select a.userid,sum(b.price) from sales a inner join product b on a.product_id = b.product_id group by userid;
+
+/*Which item cx purchased first after they become the member*/
+select * from 
+(select c.*,rank() over (partition by userid order by created_date) rnk from  
+(select a.userid,b.gold_signup_date,a.created_date,a.product_id from sales a inner join goldusers_signup b on a.userid=b.userid and created_date>=gold_signup_date) c)
+where rnk = 1;
