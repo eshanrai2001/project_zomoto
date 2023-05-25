@@ -52,7 +52,26 @@ select * from goldusers_signup;
 select * from users;
 
 /*what is the total amount each cx spent on zomoto*/
-select a.userid,sum(b.price) from sales a inner join product b on a.product_id = b.product_id group by userid;
+select a.user_id,sum(b.price) from sales inner join product on a.product_id = b.product_id group by user_id
+
+/*How many days has each cx visited zomoto*/
+select user_id,count(distinct created_at) from sales group by user_id
+
+/*what was the first product purchased by each customer*/
+select *,rank() over(partition by user_id order by created_at) rnk from sales where rnk = 1
+
+/*What is the most purchased item on the menu and how many times was it purchased by each cx*/
+select user_id, count(product_id) cnt  from sales where product_id = 
+(select product_id,count(product_id) from sales group by product_id order by count(product_id) desc)
+group by user_id
+
+/*which item was the most popular for each customer*/
+select * from 
+select *,rank() over(partition by user_id order by cnt desc) rnk from 
+(select user_id,product_id,count(product_id) cnt from sales group by user_id,product_id)a)b
+where rnk = 1
+
+
 
 /*Which item cx purchased first after they become the member*/
 select * from 
