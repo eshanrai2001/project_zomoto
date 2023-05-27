@@ -15,9 +15,9 @@ INSERT INTO users(userid,signup_date)
 (3,'2014-11-04');
 
 drop table if exists sales;
-CREATE TABLE sales(userid integer,created_date datetime,product_id integer); 
+CREATE TABLE sales(userid integer,created_at datetime,product_id integer); 
 
-INSERT INTO sales(userid,created_date,product_id) 
+INSERT INTO sales(userid,created_at,product_id) 
  VALUES (1,'2017-19-04',2),
 (3,'2019-18-12',1),
 (2,'2020-20-07',3),
@@ -52,36 +52,36 @@ select * from goldusers_signup;
 select * from users;
 
 /*what is the total amount each cx spent on zomoto*/
-select a.user_id,sum(b.price) from sales inner join product on a.product_id = b.product_id group by user_id
+select a.user_id,sum(b.price) from sales inner join product on a.product_id = b.product_id group by user_id;
 
 /*How many days has each cx visited zomoto*/
-select user_id,count(distinct created_at) from sales group by user_id
+select user_id,count(distinct created_at) from sales group by user_id;
 
 /*what was the first product purchased by each customer*/
-select *,rank() over(partition by user_id order by created_at) rnk from sales where rnk = 1
+select *,rank() over(partition by user_id order by created_at) rnk from sales where rnk = 1;
 
 /*What is the most purchased item on the menu and how many times was it purchased by each cx*/
 select user_id, count(product_id) cnt  from sales where product_id = 
 (select product_id,count(product_id) from sales group by product_id order by count(product_id) desc)
-group by user_id
+group by user_id;
 
 /*which item was the most popular for each customer*/
 select * from 
 select *,rank() over(partition by user_id order by cnt desc) rnk from 
 (select user_id,product_id,count(product_id) cnt from sales group by user_id,product_id)a)b
-where rnk = 1
+where rnk = 1;
 
 /*Which item was purchased first by the customer after they become a member*/
 (select c.*,rank() over(partition by user_id order by created_at) rnk from 
 (select a.user_id,a.product_id,a.created_at,b.goldsignup_date from sales a inner join goldusers_signup b on a.user_id = b.user_id 
 and created_at>goldsignup_date)c)d
-where rnk = 1
+where rnk = 1;
 
 /*Which item was purchased just before he become a member*/
 select * from 
 (select c.*,rank() over(partition by user_id order by created_at desc) rnk from 
 (select a.user_id,a.product_id,a.created_at,b.goldsignup_date from sales a inner join goldsignup_users b and created_at<goldsignup_date)c)d
-where rnk = 1
+where rnk = 1;
 
 /*What is the total orders and amount spent for each member before they become a gold member*/
 select user_id,count(created_at),sum(price) from 
@@ -91,4 +91,25 @@ inner join
 product d on c.product_id=d.product_id)e 
 group by user_id;
 
-/**/
+/*if buying eaach product generated points for eg: 5rs = 2 zomoto points and each product has different purchasing points for eg: product p1 5rs = 1
+zomoto point, for p2 10rs = 5points and p3 5rs = 1 point. Calculate point collected by each cx and for which product most points have been given till now*/
+select *,rank() over(order by total_point desc) rnk from 
+(select product_id,sum(points) from
+(select e.*,(amt/points) total points from 
+(select d.*,case when product_id = 1 then 5,case when product_id = 2 then 2,case when product_id = 3 then 5 else 0 as points from 
+(select c.user_id,c.product_id,sum(price) amt from 
+(select a.*,b.price from sales a inner join product b on a.product_id = b.product_id)c
+group by user_id,product_id)d)e)f group by product_id) where rnk = 1;
+ 
+/*in tthe first year when cx joins the gold program,(including their join date) irrespective oof what the cx has purchased,they earn 5 zomoto points for every 
+10 rs spend so who earned more 1 0r 3 and what was their points earnings in the first year.*/
+select c.*,d.price * 0.5 total_points_earned from 
+(select a.user_id,a.product_id,a.created_at,b.goldsignup_date from sales a inner join goldusers_signup b on a.user_id = b.user_id 
+and created_at>=goldsignup_date and created_at<=DATEADD(goldsignup_date,interval 1 year))c
+inner join product on c.product_id = d.product_id; 
+
+/*Rank all the transaction for each member when they are a zomoto gold member , for non gold membe tx mark as na */
+select e.*,case when rnk = 0 then na else rnk end as rnkk
+(select c.*,cast(case when goldsignup_date is NULL then 0 else rank() over (partition by user_id order by created_at desc) end as
+varchar) rnk from 
+(select a.user_id,a.product_id,a.created_at,b.goldsignup_date from sales a left join goldsignup_users b and created_at>=goldsignup_date)c)e;
